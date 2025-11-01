@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Python Code Quest - Difficulty</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500&family=Inter:wght@400;600;700&display.swap" rel="stylesheet">
+    
+    <link rel="stylesheet" href="style.css">
+    
+    <style>
+        /* Ensures the background pattern and colors are loaded */
+        body { background-color: #0d1117 !important; } 
+    </style>
+</head>
+<body class="bg-gray-900 text-gray-100 min-h-screen">
+
+    <main class="min-h-screen flex items-center justify-center p-4">
+        
+        <div class="w-full max-w-lg p-8 rounded-lg shadow-xl border border-gray-700 neon-shadow animate-fadeInUp">
+            
+            <h2 class="text-3xl font-bold text-center mb-6 neon-text">Choose Your Quest Difficulty</h2>
+            
+            <p class="text-center text-gray-400 mb-8">Select a challenge level to begin your Python Code Quest.</p>
+
+            <div class="grid grid-cols-1 gap-4">
+                
+                <button class="difficulty-btn w-full p-4 text-left rounded-lg interactive-btn" data-difficulty="easy">
+                    <span class="font-bold text-lg text-green-400">Easy:</span> <span class="text-gray-300">Simple syntax and list operations.</span>
+                </button>
+                
+                <button class="difficulty-btn w-full p-4 text-left rounded-lg interactive-btn" data-difficulty="medium">
+                    <span class="font-bold text-lg text-yellow-400">Medium:</span> <span class="text-gray-300">Functions, loops, and dictionary methods.</span>
+                </button>
+                
+                <button class="difficulty-btn w-full p-4 text-left rounded-lg interactive-btn" data-difficulty="hard">
+                    <span class="font-bold text-lg text-orange-400">Hard:</span> <span class="text-gray-300">File handling, OOP basics, and advanced slicing.</span>
+                </button>
+                
+                <button class="difficulty-btn w-full p-4 text-left rounded-lg interactive-btn" data-difficulty="master">
+                    <span class="font-bold text-lg text-red-500">Master:</span> <span class="text-gray-300">Decorators, generators, and complex error handling.</span>
+                </button>
+
+            </div>
+
+        </div>
+
+    </main>
+
+    <script>
+        document.querySelectorAll('.difficulty-btn').forEach(button => {
+            button.addEventListener('click', () => {
+                const difficulty = button.dataset.difficulty;
+                // Store the selected difficulty in local storage
+                localStorage.setItem('questDifficulty', difficulty);
+                // Redirect to the main game page
+                window.location.href = 'index.html';
+            });
+        });
+    </script>
+</body>
+</html>

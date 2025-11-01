@@ -8,6 +8,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const gameContainer = document.getElementById('game-container'); 
     const loadingScreen = document.getElementById('loading-screen'); 
     const difficultyLabel = document.getElementById('difficulty-label'); 
+    const loginForm = document.getElementById('login-form'); // Added to define loginForm
+    const usernameInput = document.getElementById('username'); // Added to define usernameInput
 
     // Game Elements
     const questionContainer = document.getElementById('question-container');
@@ -232,35 +234,69 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // --- Logout/Startup Flow (FIXED) ---
+    // --- Login/Startup Flow (FIXED) ---
+    // NOTE: This function's logic is critical for page state management.
+    
+    // 1. New Login Handling: Redirect directly to difficulty.html
+    if (loginForm) {
+        loginForm.addEventListener('submit', (e) => {
+            e.preventDefault(); 
+            const username = usernameInput.value;
+            if (username.trim() === '') {
+                usernameInput.classList.add('shake');
+                setTimeout(() => usernameInput.classList.remove('shake'), 500);
+                return;
+            }
+            
+            // 1. Store Username
+            localStorage.setItem('questUsername', username);
+            
+            // 2. Hide Login, Show Loading Screen
+            loginContainer.classList.add('hidden');
+            loadingScreen.classList.remove('hidden');
+
+            // 3. Redirect directly to Difficulty Page after load
+            setTimeout(() => {
+                window.location.href = 'difficulty.html'; 
+            }, 1500);
+        });
+    }
+
+
     function checkLoginAndDifficulty() {
         const storedUsername = localStorage.getItem('questUsername');
         const storedDifficulty = localStorage.getItem('questDifficulty');
 
-        // Initial check on page load
+        // This function now controls the page state upon arrival at index.html
         if (storedUsername && storedDifficulty) {
-            // State: Ready to play. Show the game content.
+            // State: Ready to play. Show the game content (which is already visible by default in the new HTML).
             usernameDisplay.textContent = storedUsername;
-            mainContent.classList.remove('hidden'); // Show game content
+            mainContent.classList.remove('hidden'); // Ensure game is visible
+            loginContainer.classList.add('hidden'); // Ensure login is hidden
             startGame(storedDifficulty);
         } else if (storedUsername && !storedDifficulty) {
             // State: Logged in, but must choose difficulty.
             window.location.href = 'difficulty.html';
         } else {
-            // State: No username, show the login form (which should redirect to index.html after success)
-            // Note: Since index.html redirects above, this case shouldn't be hit unless directly navigated to.
-            window.location.href = 'index.html'; // Fallback to ensure clean start
+            // State: Not logged in. Redirect to index.html (which will display the login form).
+            // Since we removed the initial redirect script from the HTML head, we now do it here.
+            
+            // Hide the game content (which is visible by default in new HTML)
+            mainContent.classList.add('hidden');
+            // Show the login form
+            loginContainer.classList.remove('hidden'); 
         }
     }
 
     logoutBtn.addEventListener('click', () => {
+        // Perform a clean state reset and redirect to the difficulty chooser.
         localStorage.removeItem('questUsername');
         localStorage.removeItem('questDifficulty');
         clearInterval(timerInterval);
 
         mainContent.classList.add('animate-fadeOutUp'); 
         setTimeout(() => {
-            window.location.href = 'index.html'; 
+            window.location.href = 'index.html'; // Redirect to index.html (which will display login)
         }, 300);
     });
 
@@ -463,7 +499,7 @@ document.addEventListener('DOMContentLoaded', () => {
     nextBtn.addEventListener('click', showNextQuestion);
     restartBtn.addEventListener('click', () => {
         localStorage.removeItem('questDifficulty');
-        window.location.href = 'index.html'; // Now redirecting back to index.html to ensure clean start
+        window.location.href = 'index.html'; 
     });
     
     // Initial check to load the right content

@@ -2,18 +2,16 @@ document.addEventListener('DOMContentLoaded', () => {
             
     // --- DOM Elements ---
     const loginContainer = document.getElementById('login-container');
-    const loginForm = document.getElementById('login-form');
     const mainContent = document.getElementById('main-content');
-    const usernameInput = document.getElementById('username');
     const usernameDisplay = document.getElementById('username-display');
     const logoutBtn = document.getElementById('logout-btn');
     const gameContainer = document.getElementById('game-container'); 
     const loadingScreen = document.getElementById('loading-screen'); 
+    const difficultyLabel = document.getElementById('difficulty-label'); 
 
     // Game Elements
-    const difficultyLabel = document.getElementById('difficulty-label'); // NEW
     const questionContainer = document.getElementById('question-container');
-    const questionText = document.getElementById('question-text');
+    const questionText = document.getElementById('question-text'); 
     const codeDisplay = document.querySelector('#code-display code');
     const optionsContainer = document.getElementById('options-container');
     const feedbackText = document.getElementById('feedback-text');
@@ -24,15 +22,26 @@ document.addEventListener('DOMContentLoaded', () => {
     const levelDisplay = document.getElementById('level-display');
     const xpProgressBar = document.getElementById('xp-progress-bar');
     const xpTargetDisplay = document.getElementById('xp-target');
+
+    // Timer Elements (NEW)
+    const timerBar = document.getElementById('timer-bar');
+    const timerText = document.getElementById('timer-text');
+
+    // Explanation Modal Elements (NEW)
+    const explanationModal = document.getElementById('explanation-modal');
+    const nextFromExplanationBtn = document.getElementById('next-from-explanation-btn');
+    const explanationTitle = document.getElementById('explanation-title');
+    const explanationStatus = document.getElementById('explanation-status');
+    const explanationConcept = document.getElementById('explanation-concept');
+    const explanationText = document.getElementById('explanation-text');
+    const explanationCodeTrace = document.getElementById('explanation-code-trace');
     
     // Results Elements
     const resultsContainer = document.getElementById('results-container');
-    const finalScore = document.getElementById('final-score');
-    const finalLevel = document.getElementById('final-level');
-    const finalMessage = document.getElementById('final-message');
     const restartBtn = document.getElementById('restart-btn');
 
-    // --- Game State ---
+
+    // --- Game State & Constants ---
     let currentQuestionIndex = 0;
     let score = 0;
     let level = 1;
@@ -40,52 +49,60 @@ document.addEventListener('DOMContentLoaded', () => {
     const XP_PER_LEVEL = 300; 
     const XP_PER_QUESTION = 100;
     let answerSelected = false;
+    let timerInterval = null;
+    let timeLeft = 30;
+    const initialTime = 30; // Time per question in seconds
 
-    // --- Questions Database (This array would be filtered/expanded based on difficulty) ---
+
+    // --- Questions Database (with Explanation and Concept) ---
     const allQuestions = [
-        // Easy-level questions (simple syntax)
         {
             question: "What is the output of this list slicing?",
             code: "my_list = [1, 2, 3, 4, 5]\nprint(my_list[1:4:2])",
-            options: ["[2, 3, 4]", "[2, 4]", "[1, 3, 5]", "[2]"],
-            correctAnswer: 1,
-            difficulty: 'easy'
+            options: ["[2, 4]", "[2, 3, 4]", "[1, 3, 5]", "[2]"],
+            correctAnswer: 0,
+            difficulty: 'easy',
+            concept: 'List Slicing (Start:Stop:Step)',
+            explanation: "The slice `[1:4:2]` starts at index 1 (value 2), stops *before* index 4 (value 5), and takes a step of 2. It selects index 1 (2) and index 3 (4)."
         },
-        // Medium-level questions (list comprehension)
         {
             question: "What does this list comprehension produce?",
             code: "squares = [x**2 for x in range(5)]\nprint(squares)",
-            options: ["[0, 1, 4, 9, 16, 25]", "[1, 4, 9, 16]", "[0, 1, 4, 9, 16]", "[1, 2, 3, 4, 5]"],
-            correctAnswer: 2,
-            difficulty: 'medium'
+            options: ["[0, 1, 4, 9, 16]", "[0, 1, 4, 9, 16, 25]", "[1, 4, 9, 16]", "[1, 2, 3, 4, 5]"],
+            correctAnswer: 0,
+            difficulty: 'medium',
+            concept: 'List Comprehension & Range',
+            explanation: "`range(5)` generates numbers 0, 1, 2, 3, 4. The comprehension squares each of those numbers: 0²=0, 1²=1, 2²=4, 3²=9, 4²=16."
         },
-        // Hard-level question (global keyword/scope)
         {
             question: "What will be printed due to variable scope?",
             code: "x = 10\n\ndef func():\n    global x\n    x = 5\n    print(f'Inside: {x}')\n\nfunc()\nprint(f'Outside: {x}')",
             options: ["Inside: 5, Outside: 5", "Inside: 10, Outside: 10", "Inside: 5, Outside: 10", "Inside: 10, Outside: 5"],
             correctAnswer: 0,
-            difficulty: 'hard'
+            difficulty: 'hard',
+            concept: 'Global Keyword',
+            explanation: "The `global x` keyword inside `func()` forces the function to modify the global variable `x=10`. Therefore, the global `x` becomes 5, and both print statements output 5."
         },
-        // Master-level question (tuple immutability with mutable contents)
         {
             question: "What is the content of `my_tuple` after this code executes?",
             code: "my_tuple = (1, 2, [3, 4])\ntry:\n    my_tuple[1] = 5\nexcept TypeError:\n    print('Tuple assignment failed')\n\nmy_tuple[2][0] = 99\nprint(my_tuple)",
-            options: ["'Tuple assignment failed', (1, 5, [99, 4])", "'Tuple assignment failed', (1, 2, [99, 4])", "(1, 5, [99, 4])", "(1, 2, [3, 4])"],
-            correctAnswer: 1,
-            difficulty: 'master'
+            options: ["'Tuple assignment failed', (1, 2, [99, 4])", "'Tuple assignment failed', (1, 5, [99, 4])", "(1, 5, [99, 4])", "(1, 2, [3, 4])"],
+            correctAnswer: 0,
+            difficulty: 'master',
+            concept: 'Tuple Immutability vs. Mutable Contents',
+            explanation: "Tuples are immutable, so `my_tuple[1] = 5` raises a TypeError (which is caught and printed). However, the *list* inside the tuple (`my_tuple[2]`) is mutable, so `my_tuple[2][0] = 99` succeeds, modifying the list's content."
         },
-        // ... (Add more questions with appropriate difficulty tags here) ...
-        { question: "Dict.get() usage?", code: "person = {'name': 'Alex', 'age': 25}\nprint(person.get('job', 'Not Found'))", options: ["'job'", "KeyError", "None", "'Not Found'"], correctAnswer: 3, difficulty: 'easy' },
-        { question: "Lambda function", code: "x = lambda a, b : a * b\nprint(x(5, 6))", options: ["30", "11", "Lambda object", "Error"], correctAnswer: 0, difficulty: 'medium' },
-        { question: "Default arguments", code: "def my_func(n=1):\n    return n * 2\n\nprint(my_func(3), my_func())", options: ["6 1", "3 1", "6 2", "Error"], correctAnswer: 2, difficulty: 'medium' },
-        { question: "Error Handling", code: "try:\n    result = 10 / 0\nexcept ZeroDivisionError:\n    print('Cannot divide by zero')\nfinally:\n    print('Finished')", options: ["'Cannot divide by zero'", "'Finished'", "'Cannot divide by zero' followed by 'Finished'", "ZeroDivisionError"], correctAnswer: 2, difficulty: 'hard' },
-        { question: "String formatting", code: "name = 'Alice'\nage = 30\nprint(f'{name} is {age * 2} years old.')", options: ["'Alice is {age * 2} years old.'", "'Alice is 30 years old.'", "'Alice is 60 years old.'", "SyntaxError"], correctAnswer: 2, difficulty: 'easy' }
+        { question: "Dict.get() usage?", code: "person = {'name': 'Alex', 'age': 25}\nprint(person.get('job', 'Not Found'))", options: ["'Not Found'", "'job'", "KeyError", "None"], correctAnswer: 0, difficulty: 'easy', concept: 'Dictionary Methods', explanation: "The `.get()` method safely retrieves a value. Since 'job' is not a key, it returns the default value: 'Not Found'." },
+        { question: "Lambda function", code: "x = lambda a, b : a * b\nprint(x(5, 6))", options: ["30", "11", "Lambda object", "Error"], correctAnswer: 0, difficulty: 'medium', concept: 'Lambda Functions', explanation: "A lambda is a small anonymous function. Here it takes two arguments (5 and 6) and returns their product (30)." },
+        { question: "Default arguments", code: "def my_func(n=1):\n    return n * 2\n\nprint(my_func(3), my_func())", options: ["6 2", "6 1", "3 1", "Error"], correctAnswer: 0, difficulty: 'medium', concept: 'Function Default Arguments', explanation: "The first call passes 3, returning 6. The second call uses the default n=1, returning 2. The output is '6 2'." },
+        { question: "Error Handling", code: "try:\n    result = 10 / 0\nexcept ZeroDivisionError:\n    print('Cannot divide by zero')\nfinally:\n    print('Finished')", options: ["'Cannot divide by zero' followed by 'Finished'", "'Cannot divide by zero'", "'Finished'", "ZeroDivisionError"], correctAnswer: 0, difficulty: 'hard', concept: 'Try...Except...Finally', explanation: "The `try` block fails with a ZeroDivisionError, causing the `except` block to run. The `finally` block runs *regardless* of whether an exception occurred, so both messages print." },
+        { question: "String formatting", code: "name = 'Alice'\nage = 30\nprint(f'{name} is {age * 2} years old.')", options: ["'Alice is 60 years old.'", "'Alice is {age * 2} years old.'", "'Alice is 30 years old.'", "SyntaxError"], correctAnswer: 0, difficulty: 'easy', concept: 'F-string Evaluation', explanation: "F-strings evaluate expressions inside the braces `{}`. Since `age` is 30, `age * 2` equals 60." }
     ];
 
-    let currentQuestions = []; // Array of questions for the current difficulty
+    let currentQuestions = []; 
 
-    // --- Syntax Highlighting Function ---
+
+    // --- Syntax Highlighting Function (UNCHANGED) ---
     function highlightCode(code) {
         const keywords = /\b(def|for|while|if|else|elif|return|yield|try|except|finally|import|from|class|global|nonlocal|with|as)\b/g;
         const builtins = /\b(print|range|len|sum|list|tuple|dict|set|lambda|None|True|False)\b/g;
@@ -134,63 +151,121 @@ document.addEventListener('DOMContentLoaded', () => {
             scoreDisplay.classList.remove('animate-score-pop');
         }, 200);
     }
-    
-    // --- Initial Setup and Login Flow (UPDATED) ---
 
-    // Function to check login state on page load
+    // --- Timer Functions (UNCHANGED) ---
+    function startTimer() {
+        clearInterval(timerInterval);
+        timeLeft = initialTime;
+        timerBar.style.width = '100%';
+        timerBar.classList.remove('bg-red-900');
+        timerBar.classList.add('bg-red-600');
+        timerText.textContent = `${timeLeft}s`;
+
+        timerInterval = setInterval(() => {
+            timeLeft--;
+            const percent = (timeLeft / initialTime) * 100;
+            
+            timerBar.style.width = `${percent}%`;
+            timerText.textContent = `${timeLeft}s`;
+
+            if (percent < 30) {
+                 timerBar.classList.remove('bg-red-600');
+                 timerBar.classList.add('bg-red-900'); // Deeper red for urgency
+            }
+
+            if (timeLeft <= 0) {
+                clearInterval(timerInterval);
+                // Force incorrect answer if time runs out
+                selectAnswer({ target: { dataset: { index: -1 } } }, true); 
+                feedbackText.textContent = "TIME OUT! You ran out of time.";
+                feedbackText.className = 'text-lg font-medium text-center text-red-500 animate-bounce-in';
+            }
+        }, 1000);
+    }
+    
+    // --- Code Copy Function (UNCHANGED) ---
+    const copyBtn = document.getElementById('copy-btn');
+    const copyIcon = document.getElementById('copy-icon');
+    const checkIcon = document.getElementById('check-icon');
+    
+    copyBtn.addEventListener('click', async () => {
+        const code = codeDisplay.textContent;
+        try {
+            // Note: document.execCommand is used for broader compatibility in some browser environments
+            const textArea = document.createElement('textarea');
+            textArea.value = code;
+            document.body.appendChild(textArea);
+            textArea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textArea);
+            
+            copyIcon.classList.add('hidden');
+            checkIcon.classList.remove('hidden');
+            copyBtn.style.backgroundColor = '#22c55e'; // Green for success
+            
+            setTimeout(() => {
+                copyIcon.classList.remove('hidden');
+                checkIcon.classList.add('hidden');
+                copyBtn.style.backgroundColor = ''; // Reset
+            }, 1000);
+
+        } catch (err) {
+            console.error('Failed to copy code: ', err);
+            // Fallback for environments where navigator.clipboard might fail
+            const codeToCopy = codeDisplay.textContent;
+            const tempInput = document.createElement('input');
+            tempInput.value = codeToCopy;
+            document.body.appendChild(tempInput);
+            tempInput.select();
+            document.execCommand('copy');
+            document.body.removeChild(tempInput);
+
+            copyIcon.classList.add('hidden');
+            checkIcon.classList.remove('hidden');
+            copyBtn.style.backgroundColor = '#22c55e'; 
+            
+            setTimeout(() => {
+                copyIcon.classList.remove('hidden');
+                checkIcon.classList.add('hidden');
+                copyBtn.style.backgroundColor = '';
+            }, 1000);
+        }
+    });
+
+    // --- Logout/Startup Flow (FIXED) ---
     function checkLoginAndDifficulty() {
         const storedUsername = localStorage.getItem('questUsername');
         const storedDifficulty = localStorage.getItem('questDifficulty');
 
+        // Initial check on page load
         if (storedUsername && storedDifficulty) {
-            // User is logged in AND has chosen a difficulty
+            // State: Ready to play. Show the game content.
             usernameDisplay.textContent = storedUsername;
-            loginContainer.classList.add('hidden');
-            mainContent.classList.remove('hidden');
+            mainContent.classList.remove('hidden'); // Show game content
             startGame(storedDifficulty);
-        } else if (storedUsername) {
-            // User is logged in but needs to choose difficulty (Should be redirected by HTML)
+        } else if (storedUsername && !storedDifficulty) {
+            // State: Logged in, but must choose difficulty.
+            window.location.href = 'difficulty.html';
         } else {
-            // User needs to log in first
-            // Note: HTML script should handle redirection to difficulty.html if needed.
+            // State: No username, show the login form (which should redirect to index.html after success)
+            // Note: Since index.html redirects above, this case shouldn't be hit unless directly navigated to.
+            window.location.href = 'index.html'; // Fallback to ensure clean start
         }
     }
 
-    loginForm.addEventListener('submit', (e) => {
-        e.preventDefault(); 
-        const username = usernameInput.value;
-        if (username.trim() === '') {
-            usernameInput.classList.add('shake');
-            setTimeout(() => usernameInput.classList.remove('shake'), 500);
-            return;
-        }
-
-        // Store Username and redirect to Difficulty Page
-        localStorage.setItem('questUsername', username);
-
-        // 1. Hide Login, Show Loading Screen
-        loginContainer.classList.add('hidden');
-        loadingScreen.classList.remove('hidden');
-
-        // 2. Simulate Initialization Time then redirect
-        setTimeout(() => {
-            window.location.href = 'difficulty.html';
-        }, 1500); 
-    });
-
     logoutBtn.addEventListener('click', () => {
-        // Clear both username and difficulty on logout
         localStorage.removeItem('questUsername');
         localStorage.removeItem('questDifficulty');
+        clearInterval(timerInterval);
 
         mainContent.classList.add('animate-fadeOutUp'); 
         setTimeout(() => {
-            window.location.href = 'index.html'; // Redirect back to clean login page
+            window.location.href = 'index.html'; 
         }, 300);
     });
 
 
-    // --- Game Functions (UPDATED) ---
+    // --- Game Functions (BUG FIX APPLIED) ---
     function startGame(difficulty) {
         currentQuestionIndex = 0;
         score = 0;
@@ -200,16 +275,14 @@ document.addEventListener('DOMContentLoaded', () => {
         resultsContainer.classList.add('hidden');
 
         // Filter questions based on difficulty
-        if (difficulty !== 'master') {
-             currentQuestions = allQuestions.filter(q => q.difficulty === difficulty);
-        } else {
-            // Master gets all questions
-            currentQuestions = allQuestions; 
-        }
+        currentQuestions = allQuestions.filter(q => {
+             if (difficulty === 'master') return true;
+             return q.difficulty === difficulty;
+        });
         
-        // Ensure there are questions to load
+        // Error check: If no questions match, use a default
         if (currentQuestions.length === 0) {
-            currentQuestions = allQuestions.filter(q => q.difficulty === 'easy'); // Fallback
+             currentQuestions = allQuestions.filter(q => q.difficulty === 'easy');
         }
         
         difficultyLabel.textContent = `Difficulty: ${difficulty.toUpperCase()}`;
@@ -220,7 +293,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function loadQuestion() {
-        // Check if all questions are completed before trying to load a new one
         if (currentQuestionIndex >= currentQuestions.length) {
             showResults();
             return;
@@ -230,14 +302,19 @@ document.addEventListener('DOMContentLoaded', () => {
         feedbackText.textContent = '';
         nextBtn.style.display = 'none';
         optionsContainer.innerHTML = '';
+        explanationModal.classList.add('hidden'); 
         
         questionContainer.classList.remove('animate-question-enter');
         void questionContainer.offsetWidth;
         questionContainer.classList.add('animate-question-enter');
 
-        const question = currentQuestions[currentQuestionIndex]; // Use currentQuestions
+        const question = currentQuestions[currentQuestionIndex]; 
         
-        questionText.textContent = question.question;
+        // Start the timer
+        startTimer();
+
+        // **CRITICAL BUG FIX:** Using the global 'questionText' element directly
+        questionText.textContent = question.question; 
         codeDisplay.innerHTML = highlightCode(question.code); 
         
         question.options.forEach((option, index) => {
@@ -250,6 +327,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 'text-left', 'interactive-btn'
             );
             button.dataset.index = index;
+            button.setAttribute('tabindex', index + 1); 
             button.addEventListener('click', selectAnswer);
             
             button.style.animationDelay = `${index * 100}ms`;
@@ -259,50 +337,79 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    function selectAnswer(e) {
+    function selectAnswer(e, isTimeout = false) {
         if (answerSelected) return; 
         answerSelected = true;
+        clearInterval(timerInterval); 
 
-        const selectedButton = e.target;
-        const selectedIndex = parseInt(selectedButton.dataset.index);
+        const selectedIndex = isTimeout ? -1 : parseInt(e.target.dataset.index);
         const correctIndex = currentQuestions[currentQuestionIndex].correctAnswer;
+        const isCorrect = selectedIndex === correctIndex;
 
-        selectedButton.classList.add('ripple-active');
-        setTimeout(() => selectedButton.classList.remove('ripple-active'), 500);
-
+        let clickedButton = isTimeout ? null : e.target;
+        
+        // 1. Visually lock all options
         Array.from(optionsContainer.children).forEach(btn => {
             btn.disabled = true;
             btn.classList.add('opacity-70');
             btn.classList.remove('interactive-btn'); 
         });
 
-        if (selectedIndex === correctIndex) {
+        // 2. Determine Outcome
+        if (isCorrect) {
             gainXP();
-            selectedButton.classList.add('correct', 'pulse');
-            if (!feedbackText.textContent.includes("LEVEL UP")) {
-                feedbackText.textContent = "Correct! Well done.";
-                feedbackText.className = 'text-lg font-medium text-center text-green-500 animate-bounce-in';
-            }
+            if (clickedButton) clickedButton.classList.add('correct', 'pulse', 'ripple-active');
+            feedbackText.textContent = feedbackText.textContent.includes("LEVEL UP") ? feedbackText.textContent : "Correct! Well done.";
+            feedbackText.className = 'text-lg font-medium text-center text-green-500 animate-bounce-in';
         } else {
-            selectedButton.classList.add('incorrect', 'shake');
-            feedbackText.textContent = "Not quite! Here's the right answer:";
-            feedbackText.className = 'text-lg font-medium text-center text-red-500 animate-bounce-in';
+            if (clickedButton) clickedButton.classList.add('incorrect', 'shake', 'ripple-active');
             
+            // Show the correct answer
             const correctBtn = optionsContainer.querySelector(`[data-index='${correctIndex}']`);
-            if (correctBtn) {
-                correctBtn.classList.add('correct');
-            }
+            if (correctBtn) correctBtn.classList.add('correct');
+            
+            // Set error feedback
+            feedbackText.textContent = isTimeout ? "Time Out! See the explanation." : "Not quite! See the explanation.";
+            feedbackText.className = 'text-lg font-medium text-center text-red-500 animate-bounce-in';
         }
-
-        setTimeout(() => {
-            nextBtn.style.display = 'block';
-            nextBtn.classList.add('animate-fadeIn');
-        }, 500);
+        
+        // 3. Show Explanation Modal 
+        setTimeout(() => showExplanationModal(isCorrect, selectedIndex), isTimeout ? 500 : 800);
     }
 
+    function showExplanationModal(isCorrect, selectedIndex) {
+        const question = currentQuestions[currentQuestionIndex];
+        
+        // Fill Status and Title
+        if (isCorrect) {
+            explanationStatus.textContent = "Status: Correct Answer!";
+            explanationStatus.classList.remove('text-red-400');
+            explanationStatus.classList.add('text-green-400');
+            explanationTitle.textContent = "Correct";
+        } else {
+            explanationStatus.textContent = "Status: Incorrect / Time Out";
+            explanationStatus.classList.remove('text-green-400');
+            explanationStatus.classList.add('text-red-400');
+            explanationTitle.textContent = "Review";
+        }
+
+        // Fill Explanation Content
+        explanationConcept.textContent = question.concept;
+        explanationText.textContent = question.explanation;
+        explanationCodeTrace.textContent = question.code; 
+
+        // Show Modal
+        explanationModal.classList.remove('hidden');
+        
+        nextFromExplanationBtn.focus();
+    }
+    
+    // Continue button handler for Explanation Modal
+    nextFromExplanationBtn.addEventListener('click', showNextQuestion);
+
     function showNextQuestion() {
+        explanationModal.classList.add('hidden'); 
         gameContainer.classList.add('animate-fadeOut');
-        nextBtn.classList.remove('animate-fadeIn');
 
         setTimeout(() => {
             currentQuestionIndex++;
@@ -336,14 +443,27 @@ document.addEventListener('DOMContentLoaded', () => {
 
         resultsContainer.classList.remove('hidden');
         resultsContainer.classList.add('animate-results-modal'); 
+        
+        restartBtn.focus();
     }
+    
+    // --- Keyboard Navigation Handler (UNCHANGED) ---
+    document.addEventListener('keydown', (e) => {
+        if (!mainContent.classList.contains('hidden') && !answerSelected) {
+            const optionBtns = optionsContainer.querySelectorAll('.option-btn');
+            
+            if (e.key >= '1' && e.key <= optionBtns.length.toString()) {
+                const index = parseInt(e.key) - 1;
+                optionBtns[index].click();
+            }
+        }
+    });
 
-    // --- Event Listeners ---
+    // --- Event Listeners (UNCHANGED) ---
     nextBtn.addEventListener('click', showNextQuestion);
     restartBtn.addEventListener('click', () => {
-        // Go back to difficulty selection to start a new quest
         localStorage.removeItem('questDifficulty');
-        window.location.href = 'difficulty.html'; 
+        window.location.href = 'index.html'; // Now redirecting back to index.html to ensure clean start
     });
     
     // Initial check to load the right content

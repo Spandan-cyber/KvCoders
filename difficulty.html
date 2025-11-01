@@ -22,7 +22,7 @@
         
         <div class="w-full max-w-lg p-8 rounded-lg shadow-xl border border-gray-700 neon-shadow animate-fadeInUp">
             
-            <h2 class="text-3xl font-bold text-center mb-6 neon-text">Conquer The Dungeon!</h2>
+            <h2 class="text-3xl font-bold text-center mb-6 neon-text">Conquer The Dungeon</h2>
             
             <p class="text-center text-gray-400 mb-8">Select a challenge level to begin your Python Code Quest.</p>
 
@@ -54,13 +54,15 @@
         document.querySelectorAll('.difficulty-btn').forEach(button => {
             button.addEventListener('click', () => {
                 const difficulty = button.dataset.difficulty;
-                // Store the selected difficulty in local storage
+                
+                // 1. SAVE the selected difficulty
                 localStorage.setItem('questDifficulty', difficulty);
-                // Redirect to the main game page
-                window.location.href = 'index.html';
+                
+                // 2. Redirect to the main game page (index.html)
+                // index.html will now read this saved difficulty and start the game.
+                window.location.href = 'index.html'; 
             });
         });
     </script>
 </body>
-
 </html>
